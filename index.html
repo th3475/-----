@@ -1,15 +1,105 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Облачная практика</title>
+    <meta charset="UTF-8">
+    <title>Вы обратной порты</title>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 50px;
+            background-color: #f4f4f9;
+        }
+
+        .form-container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 300px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #4CAF50;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+    </style>
 </head>
+
 <body>
-<h1>Проект успешно запущен в облаке!</h1>
-<hr>
-<p>Работу выполнил студент: <strong>Бильмаер Даниил</strong></p>
-<p>Группа: <strong>ПО-232</strong></p>
-<p>Тип облака: <strong>PaaS (GitHub Pages)</strong></p>
+
+<div class="form-container">
+    <h3>Отправить заявку</h3>
+    <form id="feedbackForm">
+        <input type="text" id="username" placeholder="Ваше имя" required>
+        <input type="email" id="userEmail" placeholder="Ваш Email" required>
+        <button type="submit">Отправить заявку</button>
+    </form>
+</div>
+
+<script type="module">
+    // Импортируем модули Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+    import { getFirestore, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+    // Твой ключ и конфиг
+    const firebaseConfig = {
+        apiKey: "AIzaSyD6VBr_5vD7DqzmdTaJOhHlE5S3wU7p",
+        authDomain: "enter-8557.firebaseapp.com",
+        projectId: "enter-8557",
+        storageBucket: "enter-8557.appspot.com",
+        messagingSenderId: "67296286717",
+        appId: "1:67296286717:web:c2364e2888751f7426e"
+    };
+
+    // Инициализация
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Логика кнопки
+    document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const nameInput = document.getElementById("username").value;
+        const emailInput = document.getElementById("userEmail").value;
+
+        try {
+            await addDoc(collection(db, "requests"), {
+                name: nameInput,
+                email: emailInput,
+                createdAt: new Date()
+            });
+
+            alert("Заявка успешно отправлена!");
+            document.getElementById("feedbackForm").reset();
+
+        } catch (error) {
+            console.error("Ошибка:", error);
+            alert("Произошла ошибка при отправке.");
+        }
+    });
+</script>
+
 </body>
 </html>
