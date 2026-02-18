@@ -2,13 +2,14 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Вы обратной порты</title>
+    <title>Отправка заявок</title>
 
     <style>
         body {
             font-family: sans-serif;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
             padding: 50px;
             background-color: #f4f4f9;
         }
@@ -19,6 +20,7 @@
             border-radius: 10px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             width: 300px;
+            margin-bottom: 40px;
         }
 
         input {
@@ -44,6 +46,33 @@
         button:hover {
             background: #45a049;
         }
+
+        #feed {
+            width: 500px;
+            max-width: 100%;
+        }
+
+        .post {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+        }
+
+        .time {
+            font-size: 12px;
+            color: gray;
+        }
+
+        .like-btn {
+            margin-top: 10px;
+            background: #2196F3;
+        }
+
+        .like-btn:hover {
+            background: #1976D2;
+        }
     </style>
 </head>
 
@@ -58,27 +87,37 @@
     </form>
 </div>
 
-<script type="module">
-    // Импортируем модули Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import { getFirestore, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+<div id="feed"></div>
 
-    // Твой ключ и конфиг
-       const firebaseConfig = {
-      apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
-      authDomain: "gf-8654a.firebaseapp.com",
-      projectId: "gf-8654a",
-      storageBucket: "gf-8654a.firebasestorage.app",
-      messagingSenderId: "716147853392",
-      appId: "1:716147853392:web:f87336c7a9378fb93f6955",
-      measurementId: "G-7HJ13ZP986"
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+    import {
+        getFirestore,
+        addDoc,
+        collection,
+        serverTimestamp,
+        onSnapshot,
+        query,
+        orderBy,
+        doc,
+        updateDoc,
+        increment
+    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
+        authDomain: "gf-8654a.firebaseapp.com",
+        projectId: "gf-8654a",
+        storageBucket: "gf-8654a.firebasestorage.app",
+        messagingSenderId: "716147853392",
+        appId: "1:716147853392:web:f87336c7a9378fb93f6955",
+        measurementId: "G-7HJ13ZP986"
     };
 
-    // Инициализация
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Логика кнопки
+    // Отправка формы
     document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
         e.preventDefault();
 
@@ -89,7 +128,8 @@
             await addDoc(collection(db, "requests"), {
                 name: nameInput,
                 email: emailInput,
-                createdAt: new Date()
+                likes: 0,
+                timestamp: serverTimestamp()
             });
 
             alert("Заявка успешно отправлена!");
@@ -97,8 +137,41 @@
 
         } catch (error) {
             console.error("Ошибка:", error);
-            alert("Произошла ошибка при отправке.");
+            alert("Ошибка отправки.");
         }
+    });
+
+    // Лайк
+    window.processLike = async (id) => {
+        const docRef = doc(db, "requests", id);
+        await updateDoc(docRef, {
+            likes: increment(1)
+        });
+    };
+
+    // Реальное время
+    const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+        const feed = document.getElementById("feed");
+        feed.innerHTML = "";
+
+        snapshot.forEach((docItem) => {
+            const data = docItem.data();
+
+            feed.innerHTML += `
+                <div class="post">
+                    <span class="time">
+                        ${data.timestamp?.toDate().toLocaleString() || "..."}
+                    </span>
+                    <p><strong>${data.name}</strong></p>
+                    <p>${data.email}</p>
+                    <button class="like-btn" onclick="processLike('${docItem.id}')">
+                        👍 ${data.likes || 0}
+                    </button>
+                </div>
+            `;
+        });
     });
 </script>
 
