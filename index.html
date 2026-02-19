@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Отправка заявок с аккаунтом</title>
+<title>Заявки с аккаунтом</title>
 <style>
 body {
     font-family: sans-serif;
@@ -14,7 +14,6 @@ body {
     position: relative;
 }
 
-/* Кнопка входа */
 #loginBtn {
     position: absolute;
     top: 20px;
@@ -73,6 +72,7 @@ button:hover { background: #45a049; }
     margin-bottom: 15px;
     border-radius: 8px;
     box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    position: relative;
 }
 
 .time { font-size: 12px; color: gray; }
@@ -80,12 +80,23 @@ button:hover { background: #45a049; }
 .like-btn { margin-top: 10px; background: #2196F3; }
 .like-btn:hover { background: #1976D2; }
 
-.delete-btn { margin-top:8px; background:#f44336; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;}
+.delete-btn { 
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background:#f44336; 
+    color:white; 
+    border:none; 
+    padding:5px 8px; 
+    border-radius:5px; 
+    cursor:pointer;
+    font-size: 12px;
+}
+.delete-btn:hover { background:#d32f2f; }
 </style>
 </head>
 <body>
 
-<!-- Кнопка входа -->
 <button id="loginBtn">Войти</button>
 
 <div class="form-container">
@@ -102,7 +113,7 @@ button:hover { background: #45a049; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, increment, deleteDoc, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, increment, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
@@ -117,28 +128,21 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let currentUser = null; // текущий пользователь
+let currentUser = null;
 
 // ======================
-// Авторизация через email + имя
+// Вход пользователя
 // ======================
 document.getElementById("loginBtn").addEventListener("click", async () => {
     const email = prompt("Введите ваш Email");
     const name = prompt("Введите ваше имя");
-
     if (!email || !name) return alert("Email и имя обязательны!");
-
-    // Проверяем, есть ли такой пользователь в базе
-    const q = query(collection(db, "requests"), where("email","==",email), where("name","==",name));
-    const snapshot = await (await db).getDocs ? await getDocs(q) : await getDocs(q); // кросс-совместимость
     currentUser = {email,name};
-
     alert(`Вы вошли как ${name}`);
-    loadFeed(); // загружаем только свои заявки
 });
 
 // ======================
-// Отправка формы
+// Отправка заявки
 // ======================
 document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -156,7 +160,6 @@ document.getElementById("feedbackForm").addEventListener("submit", async (e) => 
         });
         alert("Заявка успешно отправлена!");
         document.getElementById("feedbackForm").reset();
-        loadFeed(); // обновляем ленту
     } catch (error) {
         console.error("Ошибка:", error);
         alert("Ошибка отправки.");
@@ -172,14 +175,11 @@ window.processLike = async (id) => {
 };
 
 // ======================
-// Удаление заявки (только свой аккаунт)
+// Удаление (только автор)
 // ======================
 window.deletePost = async (id, email) => {
     if (!currentUser || currentUser.email !== email) return alert("Вы можете удалять только свои заявки!");
-
-    const confirmDelete = confirm("Удалить эту заявку?");
-    if (!confirmDelete) return;
-
+    if (!confirm("Удалить эту заявку?")) return;
     try {
         await deleteDoc(doc(db, "requests", id));
         alert("Заявка удалена!");
@@ -190,37 +190,27 @@ window.deletePost = async (id, email) => {
 };
 
 // ======================
-// Загрузка ленты (только свои заявки)
+// Лента (общедоступная)
 // ======================
-async function loadFeed() {
+const q = query(collection(db, "requests"), orderBy("timestamp","desc"));
+
+onSnapshot(q, (snapshot) => {
     const feed = document.getElementById("feed");
     feed.innerHTML = "";
-
-    if (!currentUser) return;
-
-    const q = query(
-        collection(db, "requests"),
-        where("email","==",currentUser.email),
-        orderBy("timestamp","desc")
-    );
-
-    onSnapshot(q, (snapshot) => {
-        feed.innerHTML = "";
-        snapshot.forEach((docItem) => {
-            const data = docItem.data();
-            feed.innerHTML += `
-                <div class="post">
-                    <span class="time">${data.timestamp?.toDate().toLocaleString() || "..."}</span>
-                    <p><strong>${data.name}</strong></p>
-                    <p>${data.email}</p>
-                    <p style="margin-top:8px;">💬 ${data.comment || ""}</p>
-                    <button class="like-btn" onclick="processLike('${docItem.id}')">👍 ${data.likes || 0}</button>
-                    <button class="delete-btn" onclick="deletePost('${docItem.id}','${data.email}')">🗑 Удалить</button>
-                </div>
-            `;
-        });
+    snapshot.forEach((docItem) => {
+        const data = docItem.data();
+        feed.innerHTML += `
+            <div class="post">
+                <span class="time">${data.timestamp?.toDate().toLocaleString() || "..."}</span>
+                <p><strong>${data.name}</strong></p>
+                <p>${data.email}</p>
+                <p style="margin-top:8px;">💬 ${data.comment || ""}</p>
+                <button class="like-btn" onclick="processLike('${docItem.id}')">👍 ${data.likes || 0}</button>
+                <button class="delete-btn" onclick="deletePost('${docItem.id}','${data.email}')">🗑</button>
+            </div>
+        `;
     });
-}
+});
 </script>
 </body>
 </html>
