@@ -1,87 +1,92 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Отправка заявок</title>
+<meta charset="UTF-8">
+<title>Отправка заявок с аккаунтом</title>
+<style>
+body {
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 50px;
+    background-color: #f4f4f9;
+    position: relative;
+}
 
-    <style>
-        body {
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 50px;
-            background-color: #f4f4f9;
-        }
+/* Кнопка входа */
+#loginBtn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 10px 15px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
 
-        .form-container {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            width: 300px;
-            margin-bottom: 40px;
-        }
+#loginBtn:hover { background:#1976D2; }
 
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
+.form-container {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    width: 300px;
+    margin-bottom: 40px;
+}
 
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
+input, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
 
-        button {
-            width: 100%;
-            padding: 10px;
-            background: #4CAF50;
-            border: none;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 5px;
-        }
+textarea { resize: vertical; min-height: 80px; }
 
-        button:hover {
-            background: #45a049;
-        }
+button {
+    width: 100%;
+    padding: 10px;
+    background: #4CAF50;
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+}
 
-        #feed {
-            width: 500px;
-            max-width: 100%;
-        }
+button:hover { background: #45a049; }
 
-        .post {
-            background: white;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
-        }
+#feed {
+    width: 500px;
+    max-width: 100%;
+}
 
-        .time {
-            font-size: 12px;
-            color: gray;
-        }
+.post {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+}
 
-        .like-btn {
-            margin-top: 10px;
-            background: #2196F3;
-        }
+.time { font-size: 12px; color: gray; }
 
-        .like-btn:hover {
-            background: #1976D2;
-        }
-    </style>
+.like-btn { margin-top: 10px; background: #2196F3; }
+.like-btn:hover { background: #1976D2; }
+
+.delete-btn { margin-top:8px; background:#f44336; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;}
+</style>
 </head>
-
 <body>
+
+<!-- Кнопка входа -->
+<button id="loginBtn">Войти</button>
 
 <div class="form-container">
     <h3>Отправить заявку</h3>
@@ -96,71 +101,82 @@
 <div id="feed"></div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import {
-        getFirestore,
-        addDoc,
-        collection,
-        serverTimestamp,
-        onSnapshot,
-        query,
-        orderBy,
-        doc,
-        updateDoc,
-        increment,
-        deleteDoc
-    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, increment, deleteDoc, where } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
-        authDomain: "gf-8654a.firebaseapp.com",
-        projectId: "gf-8654a",
-        storageBucket: "gf-8654a.firebasestorage.app",
-        messagingSenderId: "716147853392",
-        appId: "1:716147853392:web:f87336c7a9378fb93f6955",
-        measurementId: "G-7HJ13ZP986"
-    };
+const firebaseConfig = {
+    apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
+    authDomain: "gf-8654a.firebaseapp.com",
+    projectId: "gf-8654a",
+    storageBucket: "gf-8654a.firebasestorage.app",
+    messagingSenderId: "716147853392",
+    appId: "1:716147853392:web:f87336c7a9378fb93f6955",
+    measurementId: "G-7HJ13ZP986"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-    // Отправка формы
-    document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
+let currentUser = null; // текущий пользователь
 
-        const nameInput = document.getElementById("username").value;
-        const emailInput = document.getElementById("userEmail").value;
-        const commentInput = document.getElementById("userComment").value;
+// ======================
+// Авторизация через email + имя
+// ======================
+document.getElementById("loginBtn").addEventListener("click", async () => {
+    const email = prompt("Введите ваш Email");
+    const name = prompt("Введите ваше имя");
 
-        try {
-            await addDoc(collection(db, "requests"), {
-                name: nameInput,
-                email: emailInput,
-                comment: commentInput,
-                likes: 0,
-                timestamp: serverTimestamp()
-            });
+    if (!email || !name) return alert("Email и имя обязательны!");
 
-            alert("Заявка успешно отправлена!");
-            document.getElementById("feedbackForm").reset();
+    // Проверяем, есть ли такой пользователь в базе
+    const q = query(collection(db, "requests"), where("email","==",email), where("name","==",name));
+    const snapshot = await (await db).getDocs ? await getDocs(q) : await getDocs(q); // кросс-совместимость
+    currentUser = {email,name};
 
-        } catch (error) {
-            console.error("Ошибка:", error);
-            alert("Ошибка отправки.");
-        }
-    });
+    alert(`Вы вошли как ${name}`);
+    loadFeed(); // загружаем только свои заявки
+});
 
-    // Лайк
-    window.processLike = async (id) => {
-        const docRef = doc(db, "requests", id);
-        await updateDoc(docRef, {
-            likes: increment(1)
+// ======================
+// Отправка формы
+// ======================
+document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nameInput = document.getElementById("username").value;
+    const emailInput = document.getElementById("userEmail").value;
+    const commentInput = document.getElementById("userComment").value;
+
+    try {
+        await addDoc(collection(db, "requests"), {
+            name: nameInput,
+            email: emailInput,
+            comment: commentInput,
+            likes: 0,
+            timestamp: serverTimestamp()
         });
-    };
-    // =======================
-// Функция удаления
-// =======================
-window.deletePost = async (id) => {
+        alert("Заявка успешно отправлена!");
+        document.getElementById("feedbackForm").reset();
+        loadFeed(); // обновляем ленту
+    } catch (error) {
+        console.error("Ошибка:", error);
+        alert("Ошибка отправки.");
+    }
+});
+
+// ======================
+// Лайк
+// ======================
+window.processLike = async (id) => {
+    const docRef = doc(db, "requests", id);
+    await updateDoc(docRef, { likes: increment(1) });
+};
+
+// ======================
+// Удаление заявки (только свой аккаунт)
+// ======================
+window.deletePost = async (id, email) => {
+    if (!currentUser || currentUser.email !== email) return alert("Вы можете удалять только свои заявки!");
+
     const confirmDelete = confirm("Удалить эту заявку?");
     if (!confirmDelete) return;
 
@@ -173,61 +189,38 @@ window.deletePost = async (id) => {
     }
 };
 
-    // Реальное время
-    const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+// ======================
+// Загрузка ленты (только свои заявки)
+// ======================
+async function loadFeed() {
+    const feed = document.getElementById("feed");
+    feed.innerHTML = "";
+
+    if (!currentUser) return;
+
+    const q = query(
+        collection(db, "requests"),
+        where("email","==",currentUser.email),
+        orderBy("timestamp","desc")
+    );
 
     onSnapshot(q, (snapshot) => {
-        const feed = document.getElementById("feed");
         feed.innerHTML = "";
-
         snapshot.forEach((docItem) => {
             const data = docItem.data();
-
             feed.innerHTML += `
                 <div class="post">
-                    <span class="time">
-                        ${data.timestamp?.toDate().toLocaleString() || "..."}
-                    </span>
+                    <span class="time">${data.timestamp?.toDate().toLocaleString() || "..."}</span>
                     <p><strong>${data.name}</strong></p>
                     <p>${data.email}</p>
                     <p style="margin-top:8px;">💬 ${data.comment || ""}</p>
-                    <button class="like-btn" onclick="processLike('${docItem.id}')">
-                        👍 ${data.likes || 0}
-                    </button>
+                    <button class="like-btn" onclick="processLike('${docItem.id}')">👍 ${data.likes || 0}</button>
+                    <button class="delete-btn" onclick="deletePost('${docItem.id}','${data.email}')">🗑 Удалить</button>
                 </div>
             `;
         });
     });
-    onSnapshot(q, (snapshot) => {
-    const feed = document.getElementById("feed");
-    feed.innerHTML = "";
-
-    snapshot.forEach((docItem) => {
-        const data = docItem.data();
-
-        feed.innerHTML += `
-            <div class="post">
-                <span class="time">
-                    ${data.timestamp?.toDate().toLocaleString() || "..."}
-                </span>
-                <p><strong>${data.name}</strong></p>
-                <p>${data.email}</p>
-                <p style="margin-top:8px;">💬 ${data.comment || ""}</p>
-
-                <button class="like-btn" onclick="processLike('${docItem.id}')">
-                    👍 ${data.likes || 0}
-                </button>
-
-                <!-- 👇 ВСТАВЬТЕ ЭТУ КНОПКУ -->
-                <button onclick="deletePost('${docItem.id}')" 
-                        style="margin-top:8px;background:#f44336;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">
-                    🗑 Удалить
-                </button>
-            </div>
-        `;
-    });
-});
+}
 </script>
-
 </body>
 </html>
