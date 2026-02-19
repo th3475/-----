@@ -23,13 +23,18 @@
             margin-bottom: 40px;
         }
 
-        input {
+        input, textarea {
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
             border: 1px solid #ccc;
             border-radius: 5px;
             box-sizing: border-box;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
         }
 
         button {
@@ -83,6 +88,7 @@
     <form id="feedbackForm">
         <input type="text" id="username" placeholder="Ваше имя" required>
         <input type="email" id="userEmail" placeholder="Ваш Email" required>
+        <textarea id="userComment" placeholder="Ваш комментарий" required></textarea>
         <button type="submit">Отправить заявку</button>
     </form>
 </div>
@@ -91,7 +97,6 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics.js";
     import {
         getFirestore,
         addDoc,
@@ -105,14 +110,6 @@
         increment
     } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    import {
-        getAuth,
-        signInWithEmailAndPassword,
-        signOut,
-        onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-
-
     const firebaseConfig = {
         apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
         authDomain: "gf-8654a.firebaseapp.com",
@@ -123,33 +120,24 @@
         measurementId: "G-7HJ13ZP986"
     };
 
-    // Инициализация
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);   // 🔥 Analytics
     const db = getFirestore(app);
-    const auth = getAuth(app);             // 🔐 Auth
 
-    // ===============================
-    // 1️⃣ ANALYTICS (событие отправки заявки)
-    // ===============================
-
+    // Отправка формы
     document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const nameInput = document.getElementById("username").value;
         const emailInput = document.getElementById("userEmail").value;
+        const commentInput = document.getElementById("userComment").value;
 
         try {
             await addDoc(collection(db, "requests"), {
                 name: nameInput,
                 email: emailInput,
+                comment: commentInput,
                 likes: 0,
                 timestamp: serverTimestamp()
-            });
-
-            // 🔥 Логируем событие в Analytics
-            logEvent(analytics, "form_submitted", {
-                user_name: nameInput
             });
 
             alert("Заявка успешно отправлена!");
@@ -161,41 +149,7 @@
         }
     });
 
-    // ===============================
-    // 2️⃣ FIREBASE AUTH (Вход)
-    // ===============================
-
-    window.loginUser = async () => {
-        const email = prompt("Введите email");
-        const password = prompt("Введите пароль");
-
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-            alert("Вы вошли в систему!");
-        } catch (error) {
-            alert("Ошибка входа: " + error.message);
-        }
-    };
-
-    // Выход
-    window.logoutUser = async () => {
-        await signOut(auth);
-        alert("Вы вышли из системы");
-    };
-
-    // Проверка авторизации
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            console.log("Пользователь:", user.email);
-        } else {
-            console.log("Не авторизован");
-        }
-    });
-
-    // ===============================
-    // ЛАЙК
-    // ===============================
-
+    // Лайк
     window.processLike = async (id) => {
         const docRef = doc(db, "requests", id);
         await updateDoc(docRef, {
@@ -203,10 +157,7 @@
         });
     };
 
-    // ===============================
-    // РЕАЛЬНОЕ ВРЕМЯ
-    // ===============================
-
+    // Реальное время
     const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
 
     onSnapshot(q, (snapshot) => {
@@ -223,25 +174,14 @@
                     </span>
                     <p><strong>${data.name}</strong></p>
                     <p>${data.email}</p>
-
+                    <p style="margin-top:8px;">💬 ${data.comment || ""}</p>
                     <button class="like-btn" onclick="processLike('${docItem.id}')">
                         👍 ${data.likes || 0}
-                    </button>
-
-                    <button onclick="loginUser()" 
-                        style="margin-top:8px;background:#673AB7;">
-                        🔐 Войти
-                    </button>
-
-                    <button onclick="logoutUser()" 
-                        style="margin-top:8px;background:#f44336;">
-                        🚪 Выйти
                     </button>
                 </div>
             `;
         });
     });
-
 </script>
 
 </body>
