@@ -107,7 +107,8 @@
         orderBy,
         doc,
         updateDoc,
-        increment
+        increment,
+        deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -156,6 +157,21 @@
             likes: increment(1)
         });
     };
+    // =======================
+// Функция удаления
+// =======================
+window.deletePost = async (id) => {
+    const confirmDelete = confirm("Удалить эту заявку?");
+    if (!confirmDelete) return;
+
+    try {
+        await deleteDoc(doc(db, "requests", id));
+        alert("Заявка удалена!");
+    } catch (error) {
+        console.error("Ошибка удаления:", error);
+        alert("Не удалось удалить заявку.");
+    }
+};
 
     // Реальное время
     const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
@@ -182,6 +198,35 @@
             `;
         });
     });
+    onSnapshot(q, (snapshot) => {
+    const feed = document.getElementById("feed");
+    feed.innerHTML = "";
+
+    snapshot.forEach((docItem) => {
+        const data = docItem.data();
+
+        feed.innerHTML += `
+            <div class="post">
+                <span class="time">
+                    ${data.timestamp?.toDate().toLocaleString() || "..."}
+                </span>
+                <p><strong>${data.name}</strong></p>
+                <p>${data.email}</p>
+                <p style="margin-top:8px;">💬 ${data.comment || ""}</p>
+
+                <button class="like-btn" onclick="processLike('${docItem.id}')">
+                    👍 ${data.likes || 0}
+                </button>
+
+                <!-- 👇 ВСТАВЬТЕ ЭТУ КНОПКУ -->
+                <button onclick="deletePost('${docItem.id}')" 
+                        style="margin-top:8px;background:#f44336;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer;">
+                    🗑 Удалить
+                </button>
+            </div>
+        `;
+    });
+});
 </script>
 
 </body>
