@@ -3,7 +3,99 @@
 <head>
 <meta charset="UTF-8">
 <title>Заявки с аккаунтом</title>
-<link rel="stylesheet" href="style.css">
+<style>
+body {
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 50px;
+    background-color: #f4f4f9;
+    position: relative;
+}
+
+#loginBtn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 60px;
+    height: 40px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#loginBtn:hover { background:#1976D2; }
+
+.form-container {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    width: 300px;
+    margin-bottom: 40px;
+}
+
+input, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+textarea { resize: vertical; min-height: 80px; }
+
+button {
+    width: 100%;
+    padding: 10px;
+    background: #4CAF50;
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:hover { background: #45a049; }
+
+#feed {
+    width: 500px;
+    max-width: 100%;
+}
+
+.post {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    position: relative;
+}
+
+.time { font-size: 12px; color: gray; }
+
+.like-btn { margin-top: 10px; background: #2196F3; }
+.like-btn:hover { background: #1976D2; }
+
+.delete-btn { 
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background:#f44336; 
+    color:white; 
+    border:none; 
+    width: 60px;
+    height: 40px;
+    border-radius:5px; 
+    cursor:pointer;
+    font-size: 12px;
+}
+.delete-btn:hover { background:#d32f2f; }
+</style>
 </head>
 <body>
 
@@ -21,7 +113,106 @@
 
 <div id="feed"></div>
 
-<!-- Подключение JS -->
-<script type="module" src="./main.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, increment, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
+    authDomain: "gf-8654a.firebaseapp.com",
+    projectId: "gf-8654a",
+    storageBucket: "gf-8654a.firebasestorage.app",
+    messagingSenderId: "716147853392",
+    appId: "1:716147853392:web:f87336c7a9378fb93f6955",
+    measurementId: "G-7HJ13ZP986"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let currentUser = null;
+
+// ======================
+// Вход пользователя
+// ======================
+document.getElementById("loginBtn").addEventListener("click", async () => {
+    const email = prompt("Введите ваш Email");
+    const name = prompt("Введите ваше имя");
+    if (!email || !name) return alert("Email и имя обязательны!");
+    currentUser = {email,name};
+    alert(`Вы вошли как ${name}`);
+});
+
+// ======================
+// Отправка заявки
+// ======================
+document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nameInput = document.getElementById("username").value;
+    const emailInput = document.getElementById("userEmail").value;
+    const commentInput = document.getElementById("userComment").value;
+
+    try {
+        await addDoc(collection(db, "requests"), {
+            name: nameInput,
+            email: emailInput,
+            comment: commentInput,
+            likes: 0,
+            timestamp: serverTimestamp()
+        });
+        alert("Заявка успешно отправлена!");
+        document.getElementById("feedbackForm").reset();
+    } catch (error) {
+        console.error("Ошибка:", error);
+        alert("Ошибка отправки.");
+    }
+});
+
+// ======================
+// Лайк
+// ======================
+window.processLike = async (id) => {
+    const docRef = doc(db, "requests", id);
+    await updateDoc(docRef, { likes: increment(1) });
+};
+
+// ======================
+// Удаление (только автор)
+// ======================
+window.deletePost = async (id, email) => {
+    if (!currentUser || currentUser.email !== email) return alert("Вы можете удалять только свои заявки!");
+    if (!confirm("Удалить эту заявку?")) return;
+    try {
+        await deleteDoc(doc(db, "requests", id));
+        alert("Заявка удалена!");
+    } catch (error) {
+        console.error("Ошибка удаления:", error);
+        alert("Не удалось удалить заявку.");
+    }
+};
+
+// ======================
+// Лента (общедоступная)
+// ======================
+const q = query(collection(db, "requests"), orderBy("timestamp","desc"));
+
+onSnapshot(q, (snapshot) => {
+    const feed = document.getElementById("feed");
+    feed.innerHTML = "";
+    snapshot.forEach((docItem) => {
+        const data = docItem.data();
+        feed.innerHTML += `
+            <div class="post">
+                <span class="time">${data.timestamp?.toDate().toLocaleString() || "..."}</span>
+                <p><strong>${data.name}</strong></p>
+                <p>${data.email}</p>
+                <p style="margin-top:8px;">💬 ${data.comment || ""}</p>
+                <button class="like-btn" onclick="processLike('${docItem.id}')">👍 ${data.likes || 0}</button>
+                <button class="delete-btn" onclick="deletePost('${docItem.id}','${data.email}')">🗑</button>
+            </div>
+        `;
+    });
+});
+</script>
 </body>
 </html>
