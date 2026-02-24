@@ -14,8 +14,7 @@ body {
     background-color: #f4f4f9;
     position: relative;
 }
-<div id="userInfo" style="position:absolute; top:20px; right:100px; display:flex; align-items:center; gap:10px;">
-</div>
+
 #loginBtn {
     position: absolute;
     top: 20px;
@@ -30,6 +29,22 @@ body {
 }
 
 #loginBtn:hover { background:#1976D2; }
+
+#userInfo {
+    position:absolute;
+    top:20px;
+    right:120px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.user-avatar {
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    border:2px solid #007bff;
+}
 
 .form-container {
     background: white;
@@ -99,9 +114,12 @@ button:hover { background: #45a049; }
 .delete-btn:hover { background:#d32f2f; }
 </style>
 </head>
+
 <body>
 
 <button id="loginBtn">Войти</button>
+
+<div id="userInfo"></div>
 
 <div class="form-container">
     <h3>Отправить заявку</h3>
@@ -120,7 +138,6 @@ button:hover { background: #45a049; }
 // ================= FIREBASE =================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics.js";
 import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, increment, deleteDoc } 
 from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
@@ -128,13 +145,13 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
+  apiKey: "ТВОЙ_API_KEY",
   authDomain: "gf-8654a.firebaseapp.com",
   projectId: "gf-8654a",
   storageBucket: "gf-8654a.firebasestorage.app",
   messagingSenderId: "716147853392",
   appId: "1:716147853392:web:f87336c7a9378fb93f6955",
-  measurementId: "G-7HJ13ZP986"
+  measurementId: "G-9TE97MNMBQ"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -147,26 +164,20 @@ let currentUser = null;
 const loginBtn = document.getElementById("loginBtn");
 const form = document.getElementById("feedbackForm");
 const feed = document.getElementById("feed");
+const userInfo = document.getElementById("userInfo");
 
 
 // ================= AUTH =================
-
-const userInfo = document.getElementById("userInfo");
 
 onAuthStateChanged(auth, (user) => {
 
     if (user) {
 
         currentUser = user;
-
         loginBtn.textContent = "Выйти";
 
-        // 🔥 Показываем имя + аватарку
         userInfo.innerHTML = `
-            <img src="${user.photoURL}" 
-                 width="35" 
-                 height="35" 
-                 style="border-radius:50%;">
+            <img src="${user.photoURL}" class="user-avatar">
             <span>${user.displayName}</span>
         `;
 
@@ -175,7 +186,6 @@ onAuthStateChanged(auth, (user) => {
         currentUser = null;
         loginBtn.textContent = "Войти";
         userInfo.innerHTML = "";
-
     }
 
 });
@@ -184,7 +194,6 @@ loginBtn.addEventListener("click", async () => {
 
     if (currentUser) {
         await signOut(auth);
-        alert("Вы вышли");
     } else {
         await signInWithPopup(auth, provider);
     }
@@ -233,7 +242,6 @@ window.processLike = async (id) => {
     await updateDoc(doc(db,"requests",id), {
         likes: increment(1)
     });
-
 };
 
 
