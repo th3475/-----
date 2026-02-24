@@ -82,6 +82,7 @@ button {
     padding: 15px;
     margin-bottom: 15px;
     border-radius: 8px;
+    position: relative;
 }
 
 .like-btn {
@@ -89,6 +90,9 @@ button {
 }
 
 .delete-btn {
+    position:absolute;
+    top:10px;
+    right:10px;
     background:#f44336;
 }
 </style>
@@ -100,17 +104,18 @@ button {
 <div id="userInfo"></div>
 
 <div class="form-container">
-    <h3>Отправить заявку</h3>
-    <form id="feedbackForm">
-        <input type="text" id="username" placeholder="Ваше имя" required>
-        <input type="email" id="userEmail" placeholder="Ваш Email" required>
-        <textarea id="userComment" placeholder="Ваш комментарий" required></textarea>
+<h3>Создать / Редактировать заявку</h3>
 
-        <!-- 🔥 КАРТИНКА -->
-        <input type="file" id="imageFile" accept="image/*">
+<form id="feedbackForm">
 
-        <button type="submit">Отправить заявку</button>
-    </form>
+<input type="text" id="username" placeholder="Ваше имя" required>
+<input type="email" id="userEmail" placeholder="Ваш Email" required>
+<textarea id="userComment" placeholder="Ваш комментарий" required></textarea>
+<input type="file" id="imageFile" accept="image/*">
+
+<button type="submit" id="mainBtn">Сохранить</button>
+
+</form>
 </div>
 
 <div id="feed"></div>
@@ -120,7 +125,7 @@ button {
 // ================= FIREBASE =================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, increment, deleteDoc } 
+import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, increment, deleteDoc, where, getDocs } 
 from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } 
@@ -168,6 +173,8 @@ onAuthStateChanged(auth, (user) => {
             <span>${user.displayName}</span>
         `;
 
+        loadUserData();
+
     } else {
 
         currentUser = null;
@@ -177,56 +184,70 @@ onAuthStateChanged(auth, (user) => {
 
 });
 
-loginBtn.addEventListener("click", async () => {
+loginBtn.onclick = async () => {
 
     if (currentUser) {
         await signOut(auth);
     } else {
         await signInWithPopup(auth, provider);
     }
+};
 
-});
 
-
-// ================= ОТПРАВКА С КАРТИНКОЙ =================
+// ================= СОХРАНЕНИЕ / РЕДАКТИРОВАНИЕ =================
 
 form.addEventListener("submit", async (e) => {
 
     e.preventDefault();
 
-    if (!currentUser) {
-        alert("Войдите через Google!");
-        return;
-    }
+    if (!currentUser) return alert("Войдите!");
 
-    const name = document.getElementById("username").value;
-    const email = document.getElementById("userEmail").value;
-    const comment = document.getElementById("userComment").value;
-    const imageFile = document.getElementById("imageFile").files[0];
+    const name = username.value;
+    const email = userEmail.value;
+    const comment = userComment.value;
+    const imageFile = imageFile.files[0];
 
     let imageURL = "";
 
     if (imageFile) {
-
-        const storageRef = ref(storage, "images/" + Date.now() + "_" + imageFile.name);
-
+        const storageRef = ref(storage, "images/" + currentUser.uid);
         await uploadBytes(storageRef, imageFile);
-
         imageURL = await getDownloadURL(storageRef);
     }
 
-    await addDoc(collection(db, "requests"), {
-        uid: currentUser.uid,
-        userEmail: currentUser.email,
-        name,
-        email,
-        comment,
-        image: imageURL,
-        likes: 0,
-        timestamp: serverTimestamp()
-    });
+    const qUser = query(collection(db,"requests"), where("uid","==",currentUser.uid));
+    const snapshot = await getDocs(qUser);
 
-    form.reset();
+    if (snapshot.empty) {
+
+        // ✅ СОЗДАНИЕ
+        await addDoc(collection(db,"requests"),{
+            uid: currentUser.uid,
+            userEmail: currentUser.email,
+            name,
+            email,
+            comment,
+            image: imageURL,
+            likes: 0,
+            timestamp: serverTimestamp()
+        });
+
+    } else {
+
+        // ✅ РЕДАКТИРОВАНИЕ
+        snapshot.forEach(async (docSnap) => {
+
+            await updateDoc(doc(db,"requests",docSnap.id),{
+                name,
+                email,
+                comment,
+                image: imageURL || docSnap.data().image
+            });
+
+        });
+    }
+
+    alert("Сохранено!");
 });
 
 
@@ -242,39 +263,57 @@ window.processLike = async (id) => {
 };
 
 
-// ================= ЛЕНТА =================
+// ================= УДАЛЕНИЕ =================
 
-const q = query(collection(db, "requests"), orderBy("timestamp","desc"));
+window.deletePost = async (id) => {
 
-onSnapshot(q, (snapshot) => {
+    if (!currentUser) return;
 
-    feed.innerHTML = "";
+    await deleteDoc(doc(db,"requests",id));
+};
 
-    snapshot.forEach((docItem) => {
 
-        const data = docItem.data();
+// ================= ЗАГРУЗКА ДАННЫХ =================
 
-        feed.innerHTML += `
-        <div class="post">
+function loadUserData() {
+
+    const q = query(collection(db,"requests"), orderBy("timestamp","desc"));
+
+    onSnapshot(q,(snapshot)=>{
+
+        feed.innerHTML="";
+
+        snapshot.forEach((docItem)=>{
+
+            const data = docItem.data();
+
+            feed.innerHTML += `
+            <div class="post">
 
             <p><strong>${data.name}</strong></p>
             <p>${data.comment}</p>
 
-            ${data.image ? 
-            `<img src="${data.image}" 
-              style="width:100%; border-radius:8px; margin-top:10px;">`
-            : ""}
+            ${data.image ? `
+            <img src="${data.image}"
+            style="width:100%; border-radius:8px; margin-top:10px;">
+            ` : ""}
 
             <button class="like-btn"
-                onclick="processLike('${docItem.id}')">
-                👍 ${data.likes || 0}
+            onclick="processLike('${docItem.id}')">
+            👍 ${data.likes || 0}
             </button>
 
-        </div>
-        `;
-    });
+            ${currentUser && currentUser.uid === data.uid ?
+            `<button class="delete-btn"
+            onclick="deletePost('${docItem.id}')">
+            🗑
+            </button>` : ""}
 
-});
+            </div>
+            `;
+        });
+    });
+}
 
 </script>
 
