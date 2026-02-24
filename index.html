@@ -14,7 +14,8 @@ body {
     background-color: #f4f4f9;
     position: relative;
 }
-
+<div id="userInfo" style="position:absolute; top:20px; right:100px; display:flex; align-items:center; gap:10px;">
+</div>
 #loginBtn {
     position: absolute;
     top: 20px;
@@ -150,14 +151,31 @@ const feed = document.getElementById("feed");
 
 // ================= AUTH =================
 
+const userInfo = document.getElementById("userInfo");
+
 onAuthStateChanged(auth, (user) => {
 
     if (user) {
+
         currentUser = user;
+
         loginBtn.textContent = "Выйти";
+
+        // 🔥 Показываем имя + аватарку
+        userInfo.innerHTML = `
+            <img src="${user.photoURL}" 
+                 width="35" 
+                 height="35" 
+                 style="border-radius:50%;">
+            <span>${user.displayName}</span>
+        `;
+
     } else {
+
         currentUser = null;
         loginBtn.textContent = "Войти";
+        userInfo.innerHTML = "";
+
     }
 
 });
