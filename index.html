@@ -1,4 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Заявки с аккаунтом</title>
+
+<style>
+body {
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 50px;
+    background-color: #f4f4f9;
+    position: relative;
+}
+
+#loginBtn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 80px;
+    height: 40px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#loginBtn:hover { background:#1976D2; }
+
+.form-container {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    width: 300px;
+    margin-bottom: 40px;
+}
+
+input, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+textarea { resize: vertical; min-height: 80px; }
+
+button {
+    width: 100%;
+    padding: 10px;
+    background: #4CAF50;
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:hover { background: #45a049; }
+
+#feed {
+    width: 500px;
+    max-width: 100%;
+}
+
+.post {
+    background: white;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    position: relative;
+}
+
+.time { font-size: 12px; color: gray; }
+
+.like-btn { margin-top: 10px; background: #2196F3; }
+.like-btn:hover { background: #1976D2; }
+
+.delete-btn { 
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background:#f44336; 
+    color:white; 
+    border:none; 
+    width: 60px;
+    height: 40px;
+    border-radius:5px; 
+    cursor:pointer;
+    font-size: 12px;
+}
+.delete-btn:hover { background:#d32f2f; }
+</style>
+</head>
+<body>
+
+<button id="loginBtn">Войти</button>
+
+<div class="form-container">
+    <h3>Отправить заявку</h3>
+    <form id="feedbackForm">
+        <input type="text" id="username" placeholder="Ваше имя" required>
+        <input type="email" id="userEmail" placeholder="Ваш Email" required>
+        <textarea id="userComment" placeholder="Ваш комментарий" required></textarea>
+        <button type="submit">Отправить заявку</button>
+    </form>
+</div>
+
+<div id="feed"></div>
+
 <script type="module">
+
+// ================= FIREBASE =================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, increment, deleteDoc } 
@@ -7,15 +125,13 @@ from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } 
 from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
-
-// 🔥 ТВОЯ КОНФИГУРАЦИЯ
 const firebaseConfig = {
-  apiKey: "ТВОЙ_API_KEY",
-  authDomain: "gf-8654a.firebaseapp.com",
-  projectId: "gf-8654a",
-  storageBucket: "gf-8654a.firebasestorage.app",
-  messagingSenderId: "716147853392",
-  appId: "1:716147853392:web:f87336c7a9378fb93f6955"
+    apiKey: "ТВОЙ_API_KEY",
+    authDomain: "gf-8654a.firebaseapp.com",
+    projectId: "gf-8654a",
+    storageBucket: "gf-8654a.firebasestorage.app",
+    messagingSenderId: "716147853392",
+    appId: "1:716147853392:web:f87336c7a9378fb93f6955"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -26,12 +142,14 @@ const provider = new GoogleAuthProvider();
 let currentUser = null;
 
 const loginBtn = document.getElementById("loginBtn");
+const form = document.getElementById("feedbackForm");
+const feed = document.getElementById("feed");
 
 
-// ======================
-// Проверка пользователя
-// ======================
+// ================= AUTH =================
+
 onAuthStateChanged(auth, (user) => {
+
     if (user) {
         currentUser = user;
         loginBtn.textContent = "Выйти";
@@ -39,102 +157,89 @@ onAuthStateChanged(auth, (user) => {
         currentUser = null;
         loginBtn.textContent = "Войти";
     }
+
 });
 
-
-// ======================
-// КНОПКА ВХОД / ВЫХОД
-// ======================
 loginBtn.addEventListener("click", async () => {
 
     if (currentUser) {
         await signOut(auth);
-        alert("Вы вышли из аккаунта");
-        return;
+        alert("Вы вышли");
+    } else {
+        await signInWithPopup(auth, provider);
     }
 
-    try {
-        await signInWithPopup(auth, provider);
-        alert("Вход выполнен через Google");
-    } catch (error) {
-        console.error(error);
-        alert("Ошибка входа");
-    }
 });
 
 
-// ======================
-// ОТПРАВКА ЗАЯВКИ (ТОЛЬКО АВТОРИЗОВАННЫЕ)
-// ======================
-document.getElementById("feedbackForm").addEventListener("submit", async (e) => {
+// ================= ОТПРАВКА =================
+
+form.addEventListener("submit", async (e) => {
+
     e.preventDefault();
 
     if (!currentUser) {
-        alert("Сначала войдите в Google аккаунт!");
+        alert("Войдите через Google!");
         return;
     }
 
-    const nameInput = document.getElementById("username").value;
-    const emailInput = document.getElementById("userEmail").value;
-    const commentInput = document.getElementById("userComment").value;
+    const name = document.getElementById("username").value;
+    const email = document.getElementById("userEmail").value;
+    const comment = document.getElementById("userComment").value;
 
     await addDoc(collection(db, "requests"), {
         uid: currentUser.uid,
         userEmail: currentUser.email,
-        name: nameInput,
-        email: emailInput,
-        comment: commentInput,
+        name,
+        email,
+        comment,
         likes: 0,
         timestamp: serverTimestamp()
     });
 
-    alert("Заявка отправлена!");
-    document.getElementById("feedbackForm").reset();
+    form.reset();
 });
 
 
-// ======================
-// ЛАЙК
-// ======================
+// ================= ЛАЙК =================
+
 window.processLike = async (id) => {
 
     if (!currentUser) {
-        alert("Войдите чтобы ставить лайки");
+        alert("Войдите чтобы лайкать");
         return;
     }
 
-    await updateDoc(doc(db, "requests", id), {
+    await updateDoc(doc(db,"requests",id), {
         likes: increment(1)
     });
+
 };
 
 
-// ======================
-// УДАЛЕНИЕ
-// ======================
+// ================= УДАЛЕНИЕ =================
+
 window.deletePost = async (id, ownerEmail) => {
 
     if (!currentUser) return;
 
     if (currentUser.email !== ownerEmail) {
-        alert("Удалять можно только свои заявки!");
+        alert("Можно удалять только свои заявки!");
         return;
     }
 
-    if (!confirm("Удалить заявку?")) return;
+    if (!confirm("Удалить?")) return;
 
-    await deleteDoc(doc(db, "requests", id));
+    await deleteDoc(doc(db,"requests",id));
 };
 
 
-// ======================
-// ЗАГРУЗКА ЛЕНТЫ
-// ======================
-const q = query(collection(db, "requests"), orderBy("timestamp", "desc"));
+// ================= ЛЕНТА =================
+
+const q = query(collection(db, "requests"), orderBy("timestamp","desc"));
 
 onSnapshot(q, (snapshot) => {
 
-    const feed = document.getElementById("feed");
     feed.innerHTML = "";
 
     snapshot.forEach((docItem) => {
@@ -157,17 +262,21 @@ onSnapshot(q, (snapshot) => {
             </button>
 
             ${
-              currentUser && currentUser.email === data.userEmail
-              ? `<button class="delete-btn"
-                   onclick="deletePost('${docItem.id}','${data.userEmail}')">
-                   🗑
-                 </button>`
-              : ""
+                currentUser && currentUser.email === data.userEmail
+                ? `<button class="delete-btn"
+                    onclick="deletePost('${docItem.id}','${data.userEmail}')">
+                    🗑
+                  </button>`
+                : ""
             }
 
         </div>
         `;
     });
+
 });
 
 </script>
+
+</body>
+</html>
