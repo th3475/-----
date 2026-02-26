@@ -337,11 +337,13 @@ form.addEventListener("submit", async (e) => {
         snapshot.forEach(async (docSnap)=>{
 
             await updateDoc(doc(db,"requests",docSnap.id),{
-                name,
-                email,
-                comment,
-                image:imageURL || docSnap.data().image
+                name: name || "",
+                email: email || "",
+                comment: comment || "",
+                image: imageURL ? imageURL : (docSnap.data().image || "")
             });
+        
+        });
 
         });
 
