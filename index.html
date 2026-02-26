@@ -102,11 +102,75 @@ button {
     font-size:14px;
     cursor:pointer;
 }
+/* КНОПКА СООБЩЕНИЙ */
+#messagesBtn{
+    position: fixed;
+    left: 20px;
+    top: 6%;
+    transform: translateY(-50%);
+    width: 100px;
+    height: 55px;
+    border-radius: 20%;
+    border: none;
+    background: #2196F3;
+    color: white;
+    font-size: 13px;
+    cursor: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* ОКНО ЧАТА */
+#chatWindow{
+    position: fixed;
+    left: -400px;
+    top: 0;
+    width: 350px;
+    height: 100%;
+    background: #f1f5f9;
+    box-shadow: 5px 0 20px rgba(0,0,0,0.2);
+    transition: 0.4s;
+    padding: 20px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+#chatWindow.active{
+    left: 0;
+}
+
+#closeChat{
+    background: #f44336;
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 15px;
+}
+.user-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.user-item:hover{
+    background:#e3f2fd;
+}
+
+.user-item img{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+}
 </style>
 </head>
 
 <body>
-
+<button id="messagesBtn">Сообщения</button>
 <button id="loginBtn">Войти</button>
 <div id="userInfo"></div>
 
@@ -126,7 +190,13 @@ button {
 </div>
 
 <div id="feed"></div>
+<div id="chatWindow">
+    <button id="closeChat">Закрыть</button>
 
+    <h3>Сообщения</h3>
+
+    <div id="usersList"></div>
+</div>
 <script type="module">
 
 // ================= FIREBASE =================
@@ -141,6 +211,8 @@ from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } 
 from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
+import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, increment, deleteDoc, where, getDocs, setDoc } 
+from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
@@ -168,7 +240,7 @@ const userInfo = document.getElementById("userInfo");
 
 // ================= AUTH =================
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
 
     if (user) {
 
@@ -180,7 +252,16 @@ onAuthStateChanged(auth, (user) => {
             <span>${user.displayName}</span>
         `;
 
-        loadUserData();
+        // 🔥 сохраняем пользователя в коллекцию users
+        await setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            name: user.displayName,
+            email: user.email,
+            photo: user.photoURL
+        });
+
+        loadUsers();     // загрузка пользователей в меню
+        loadUserData();  // загрузка заявок
 
     } else {
 
@@ -190,7 +271,6 @@ onAuthStateChanged(auth, (user) => {
     }
 
 });
-
 loginBtn.onclick = async () => {
 
     if (currentUser) {
@@ -216,7 +296,7 @@ form.addEventListener("submit", async (e) => {
 
     let imageURL = "";
 
-  if (imageFile) {
+    if (imageFile) {
 
     const storageRef = ref(
         storage,
@@ -327,7 +407,46 @@ function loadUserData() {
         });
     });
 }
+// ======== ОТКРЫТИЕ ЧАТА ========
 
+const messagesBtn = document.getElementById("messagesBtn");
+const chatWindow = document.getElementById("chatWindow");
+const closeChat = document.getElementById("closeChat");
+
+messagesBtn.onclick = () => {
+    chatWindow.classList.add("active");
+};
+
+closeChat.onclick = () => {
+    chatWindow.classList.remove("active");
+};
+// ======== ЗАГРУЗКА ПОЛЬЗОВАТЕЛЕЙ В МЕНЮ ========
+
+function loadUsers(){
+
+    const usersRef = collection(db, "users");
+
+    onSnapshot(usersRef, (snapshot)=>{
+
+        const usersList = document.getElementById("usersList");
+        usersList.innerHTML = "";
+
+        snapshot.forEach((docItem)=>{
+
+            const user = docItem.data();
+
+            // не показываем самого себя
+            if(currentUser && user.uid === currentUser.uid) return;
+
+            usersList.innerHTML += `
+                <div class="user-item">
+                    <img src="${user.photo}">
+                    <span>${user.name}</span>
+                </div>
+            `;
+        });
+    });
+}
 </script>
 
 </body>
