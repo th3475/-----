@@ -96,9 +96,9 @@ button {
     background:#f44336;
     color:white;
     border:none;
-    width:20px;        
+    width:20px;        /* 🔥 было 60px — теперь в 2 раза меньше */
     height:30px;
-    border-radius:50%;  
+    border-radius:50%;  /* 🔥 круглая кнопка */
     font-size:14px;
     cursor:pointer;
 }
@@ -199,26 +199,34 @@ button {
 </div>
 <script type="module">
 
-// ================= FIREBASE =================
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getFirestore, addDoc, collection, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, increment, deleteDoc, where, getDocs } 
-from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { 
+getFirestore, addDoc, collection, serverTimestamp,
+onSnapshot, query, orderBy, doc,
+updateDoc, increment, deleteDoc,
+where, getDocs, setDoc
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } 
-from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+import { 
+getAuth, GoogleAuthProvider,
+signInWithPopup, signOut,
+onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
-import { getStorage, ref, uploadBytes, getDownloadURL } 
-from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
+import { 
+getStorage, ref, uploadBytes,
+getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
+
+// 🔥 Firebase конфиг
 const firebaseConfig = {
-  apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
+  apiKey: "ТВОЙ_API_KEY",
   authDomain: "gf-8654a.firebaseapp.com",
   projectId: "gf-8654a",
   storageBucket: "gf-8654a.firebasestorage.app",
   messagingSenderId: "716147853392",
-  appId: "1:716147853392:web:f87336c7a9378fb93f6955",
-  measurementId: "G-7HJ13ZP986"
+  appId: "1:716147853392:web:f87336c7a9378fb93f6955"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -245,20 +253,19 @@ onAuthStateChanged(auth, async (user) => {
         loginBtn.textContent = "Выйти";
 
         userInfo.innerHTML = `
-            <img src="${user.photoURL}" class="user-avatar">
-            <span>${user.displayName}</span>
+            <img src="${user.photoURL || ''}" class="user-avatar">
+            <span>${user.displayName || "Без имени"}</span>
         `;
 
-        // 🔥 сохраняем пользователя в коллекцию users
-        await setDoc(doc(db, "users", user.uid), {
-            uid: user.uid,
-            name: user.displayName,
-            email: user.email,
-            photo: user.photoURL
+        await setDoc(doc(db,"users",user.uid),{
+            uid:user.uid,
+            name:user.displayName || "Без имени",
+            email:user.email,
+            photo:user.photoURL || ""
         });
 
-        loadUsers();     // загрузка пользователей в меню
-        loadUserData();  // загрузка заявок
+        loadUsers();
+        loadPosts();
 
     } else {
 
@@ -268,6 +275,7 @@ onAuthStateChanged(auth, async (user) => {
     }
 
 });
+
 loginBtn.onclick = async () => {
 
     if (currentUser) {
@@ -275,66 +283,70 @@ loginBtn.onclick = async () => {
     } else {
         await signInWithPopup(auth, provider);
     }
+
 };
 
 
-// ================= СОХРАНЕНИЕ / РЕДАКТИРОВАНИЕ =================
+// ================= СОХРАНЕНИЕ =================
 
 form.addEventListener("submit", async (e) => {
 
     e.preventDefault();
 
-    if (!currentUser) return alert("Войдите!");
+    if (!currentUser) return alert("Сначала войдите!");
 
-    const name = username.value;
-    const email = userEmail.value;
-    const comment = userComment.value;
-    const imageFile = imageFile.files[0];
+    const name = document.getElementById("username").value;
+    const email = document.getElementById("userEmail").value;
+    const comment = document.getElementById("userComment").value;
+    const fileInput = document.getElementById("imageFile");
+    const file = fileInput.files[0];
 
     let imageURL = "";
 
-    if (imageFile) {
+    if (file) {
 
-    const storageRef = ref(
-        storage,
-        "images/" + currentUser.uid + "_" + Date.now()
+        const storageRef = ref(
+            storage,
+            "images/" + currentUser.uid + "_" + Date.now()
+        );
+
+        await uploadBytes(storageRef, file);
+        imageURL = await getDownloadURL(storageRef);
+    }
+
+    const q = query(
+        collection(db,"requests"),
+        where("uid","==",currentUser.uid)
     );
 
-    await uploadBytes(storageRef, imageFile);
-
-    imageURL = await getDownloadURL(storageRef);
-}
-
-    const qUser = query(collection(db,"requests"), where("uid","==",currentUser.uid));
-    const snapshot = await getDocs(qUser);
+    const snapshot = await getDocs(q);
 
     if (snapshot.empty) {
 
-        // ✅ СОЗДАНИЕ
         await addDoc(collection(db,"requests"),{
             uid: currentUser.uid,
             userEmail: currentUser.email,
             name,
             email,
             comment,
-            image: imageURL,
-            likes: 0,
-            timestamp: serverTimestamp()
+            image:imageURL,
+            likes:0,
+            timestamp:serverTimestamp()
         });
 
     } else {
 
-        // ✅ РЕДАКТИРОВАНИЕ
-        snapshot.forEach(async (docSnap) => {
+        snapshot.forEach(async (docSnap)=>{
 
             await updateDoc(doc(db,"requests",docSnap.id),{
                 name,
                 email,
                 comment,
-                image: imageURL || docSnap.data().image
+                image:imageURL || docSnap.data().image
             });
 
         });
+
     }
 
     alert("Сохранено!");
@@ -347,9 +359,10 @@ window.processLike = async (id) => {
 
     if (!currentUser) return;
 
-    await updateDoc(doc(db,"requests",id), {
-        likes: increment(1)
+    await updateDoc(doc(db,"requests",id),{
+        likes:increment(1)
     });
+
 };
 
 
@@ -360,14 +373,18 @@ window.deletePost = async (id) => {
     if (!currentUser) return;
 
     await deleteDoc(doc(db,"requests",id));
+
 };
 
 
-// ================= ЗАГРУЗКА ДАННЫХ =================
+// ================= ЗАГРУЗКА ЗАЯВОК =================
 
-function loadUserData() {
+function loadPosts(){
 
-    const q = query(collection(db,"requests"), orderBy("timestamp","desc"));
+    const q = query(
+        collection(db,"requests"),
+        orderBy("timestamp","desc")
+    );
 
     onSnapshot(q,(snapshot)=>{
 
@@ -393,57 +410,46 @@ function loadUserData() {
             👍 ${data.likes || 0}
             </button>
 
-            ${currentUser && currentUser.uid === data.uid ?
-            `<button class="delete-btn"
+            ${currentUser && currentUser.uid === data.uid ? `
+            <button class="delete-btn"
             onclick="deletePost('${docItem.id}')">
             🗑
-            </button>` : ""}
+            </button>
+            ` : ""}
 
             </div>
             `;
         });
     });
 }
-// ======== ОТКРЫТИЕ ЧАТА ========
 
-const messagesBtn = document.getElementById("messagesBtn");
-const chatWindow = document.getElementById("chatWindow");
-const closeChat = document.getElementById("closeChat");
 
-messagesBtn.onclick = () => {
-    chatWindow.classList.add("active");
-};
-
-closeChat.onclick = () => {
-    chatWindow.classList.remove("active");
-};
-// ======== ЗАГРУЗКА ПОЛЬЗОВАТЕЛЕЙ В МЕНЮ ========
+// ================= ЗАГРУЗКА ПОЛЬЗОВАТЕЛЕЙ =================
 
 function loadUsers(){
 
-    const usersRef = collection(db, "users");
-
-    onSnapshot(usersRef, (snapshot)=>{
+    onSnapshot(collection(db,"users"),(snapshot)=>{
 
         const usersList = document.getElementById("usersList");
-        usersList.innerHTML = "";
+        usersList.innerHTML="";
 
         snapshot.forEach((docItem)=>{
 
             const user = docItem.data();
 
-            // не показываем самого себя
             if(currentUser && user.uid === currentUser.uid) return;
 
             usersList.innerHTML += `
-                <div class="user-item">
-                    <img src="${user.photo}">
-                    <span>${user.name}</span>
-                </div>
+            <div class="user-item">
+                <img src="${user.photo || ''}">
+                <span>${user.name}</span>
+            </div>
             `;
         });
+
     });
 }
+
 </script>
 
 </body>
