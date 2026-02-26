@@ -182,7 +182,6 @@ button {
 <input type="text" id="username" placeholder="Ваше имя" required>
 <input type="email" id="userEmail" placeholder="Ваш Email" required>
 <textarea id="userComment" placeholder="Ваш комментарий" required></textarea>
-<input type="file" id="imageFile" accept="image/*">
 
 <button type="submit" id="mainBtn">Сохранить</button>
 
@@ -198,7 +197,6 @@ button {
     <div id="usersList"></div>
 </div>
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { 
 getFirestore, addDoc, collection, serverTimestamp,
@@ -213,24 +211,19 @@ signInWithPopup, signOut,
 onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
-import { 
-getStorage, ref, uploadBytes,
-getDownloadURL
-} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
-  authDomain: "gf-8654a.firebaseapp.com",
-  projectId: "gf-8654a",
-  storageBucket: "gf-8654a.firebasestorage.app",
-  messagingSenderId: "716147853392",
-  appId: "1:716147853392:web:f87336c7a9378fb93f6955",
-  measurementId: "G-7HJ13ZP986"
-};
+    const firebaseConfig = {
+    apiKey: "AIzaSyBVbhWbVDyhWGqC4x176LpjzSnrTE_rKe0",
+    authDomain: "gf-8654a.firebaseapp.com",
+    projectId: "gf-8654a",
+    storageBucket: "gf-8654a.firebasestorage.app",
+    messagingSenderId: "716147853392",
+    appId: "1:716147853392:web:f87336c7a9378fb93f6955",
+    measurementId: "G-7HJ13ZP986"
+    };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const storage = getStorage(app);
 const provider = new GoogleAuthProvider();
 
 let currentUser = null;
@@ -296,22 +289,6 @@ form.addEventListener("submit", async (e) => {
     const name = document.getElementById("username").value;
     const email = document.getElementById("userEmail").value;
     const comment = document.getElementById("userComment").value;
-    const fileInput = document.getElementById("imageFile");
-    const file = fileInput.files[0];
-
-    let imageURL = "";
-
-    if (file) {
-
-        const storageRef = ref(
-            storage,
-            "images/" + currentUser.uid + "_" + Date.now()
-        );
-
-        await uploadBytes(storageRef, file);
-        imageURL = await getDownloadURL(storageRef);
-    }
-
     const q = query(
         collection(db,"requests"),
         where("uid","==",currentUser.uid)
@@ -327,7 +304,6 @@ form.addEventListener("submit", async (e) => {
             name,
             email,
             comment,
-            image:imageURL,
             likes:0,
             timestamp:serverTimestamp()
         });
@@ -340,7 +316,6 @@ form.addEventListener("submit", async (e) => {
                 name: name || "",
                 email: email || "",
                 comment: comment || "",
-                image: imageURL ? imageURL : (docSnap.data().image || "")
             });
         
         });
@@ -397,11 +372,6 @@ function loadPosts(){
 
             <p><strong>${data.name}</strong></p>
             <p>${data.comment}</p>
-
-            ${data.image ? `
-            <img src="${data.image}"
-            style="width:100%; border-radius:8px; margin-top:10px;">
-            ` : ""}
 
             <button class="like-btn"
             onclick="processLike('${docItem.id}')">
