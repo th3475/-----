@@ -418,7 +418,21 @@ function loadUsers(){
 
     });
 }
+document.addEventListener("DOMContentLoaded", () => {
 
+    const messagesBtn = document.getElementById("messagesBtn");
+    const chatWindow = document.getElementById("chatWindow");
+    const closeChat = document.getElementById("closeChat");
+
+    messagesBtn.addEventListener("click", () => {
+        chatWindow.classList.add("active");
+    });
+
+    closeChat.addEventListener("click", () => {
+        chatWindow.classList.remove("active");
+    });
+
+});
 </script>
 
 </body>
