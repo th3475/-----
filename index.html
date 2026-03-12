@@ -166,6 +166,20 @@ button {
     height:40px;
     border-radius:50%;
 }
+    .status-btn {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.status-btn.playing { background: #4CAF50; }
+.status-btn.resting { background: #2196F3; }
+.status-btn.sleeping { background: #9C27B0; }
+.status-btn.busy { background: #f44336; }
 </style>
 </head>
 
@@ -173,7 +187,7 @@ button {
 <button id="messagesBtn">Сообщения</button>
 <button id="loginBtn">Войти</button>
 <div id="userInfo"></div>
-
+<div id="statusPanel" style="display:flex; gap:10px; margin-top:10px;"></div>
 <div class="form-container">
 <h3>Создать / Редактировать заявку</h3>
 
@@ -232,32 +246,30 @@ window.changeStatus = async (text, color) => {
 
 // загрузка пользователей
 async function fetchGroup() {
+    const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("username", { ascending: true });
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .order("username", { ascending: true })
+    if (error) return console.error(error);
 
-  if (error) return console.error(error)
+    const list = document.getElementById("usersList");
 
-  const list = document.getElementById("usersList")
-
-  list.innerHTML = data.map(user => `
-    <div class="user-item">
-      <div>
-        <b>${user.username}</b>
-        <small style="color:${user.color || '#666'}">
-        ${user.status || "Сейчас не задан"}
-        </small>
-      </div>
-    </div>
-  `).join("")
-
+    list.innerHTML = data.map(user => `
+        <div class="user-item">
+            <div>
+                <b>${user.username}</b>
+                <small style="color:${user.color || '#666'}">
+                ${user.status || "Не задан"}
+                </small>
+            </div>
+        </div>
+    `).join("");
 }
 
-fetchGroup()
-
-setInterval(fetchGroup, 5000)
+// обновление каждые 5 секунд
+fetchGroup();
+setInterval(fetchGroup, 5000);
     
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
 import { 
@@ -319,7 +331,10 @@ onAuthStateChanged(auth, async (user) => {
 
         loadUsers();
         loadPosts();
-
+        
+        if (currentUser) {
+    renderStatusPanel(); // добавляем рендер кнопок
+}
     } else {
 
         currentUser = null;
@@ -328,7 +343,21 @@ onAuthStateChanged(auth, async (user) => {
     }
 
 });
+const statuses = [
+    { text: "Играю", color: "#4CAF50", class: "playing" },
+    { text: "Отдыхаю", color: "#2196F3", class: "resting" },
+    { text: "Сплю", color: "#9C27B0", class: "sleeping" },
+    { text: "Не беспокоить", color: "#f44336", class: "busy" }
+];
 
+function renderStatusPanel() {
+    const panel = document.getElementById("statusPanel");
+    panel.innerHTML = statuses.map(s => `
+        <button class="status-btn ${s.class}" onclick="changeStatus('${s.text}','${s.color}')">
+            ${s.text}
+        </button>
+    `).join('');
+}
 loginBtn.onclick = async () => {
 
     if (currentUser) {
@@ -480,6 +509,19 @@ function loadUsers(){
 
     });
 }
+    window.changeStatus = async (text, color) => {
+    if (!currentUser) return;
+
+    const { error } = await supabase
+        .from("profiles")
+        .update({ status: text, color: color })
+        .eq("id", currentUser.id);
+
+    if (error) {
+        console.error("Ошибка обновления статуса:", error);
+        alert("Не удалось обновить статус");
+    }
+};
 document.addEventListener("DOMContentLoaded", () => {
 
     const messagesBtn = document.getElementById("messagesBtn");
